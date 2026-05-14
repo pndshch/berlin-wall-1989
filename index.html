@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ベルリンの壁 1989 — Berlin Wall</title>
+<meta name="description" content="1989年11月9日、ベルリンの壁が崩壊した夜を体験せよ。市民を集め、壁へ行進し、自由への壁を打ち砕け。">
+<meta property="og:title" content="ベルリンの壁 1989 — Berlin Wall">
+<meta property="og:description" content="1989年11月9日、壁が崩壊した歴史的な夜を3フェーズで体験する歴史アクションゲーム。">
+<meta property="og:type" content="website">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{height:100%;overflow:hidden;font-family:'Hiragino Sans','Helvetica Neue',Arial,sans-serif}
+body{background:#0a0a14;color:#e0ddd5}
+button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:none}
+canvas{display:block;width:100%;height:100%;position:absolute;top:0;left:0;image-rendering:auto}
+
+/* ── Overlays ── */
+#overlay{position:absolute;top:0;left:0;right:0;bottom:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(6,6,14,.92);transition:opacity .5s;padding:20px;text-align:center}
+#overlay.hide{opacity:0;pointer-events:none}
+.ov-year{font-size:14px;color:#888;letter-spacing:4px;margin-bottom:6px}
+.ov-title{font-size:28px;font-weight:800;letter-spacing:2px;background:linear-gradient(135deg,#ffcc00,#dd0000);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px}
+.ov-sub{font-size:15px;color:#aaa;margin-bottom:18px;line-height:1.6;max-width:380px}
+.ov-fact{font-size:12px;color:#776;line-height:1.7;max-width:340px;margin-bottom:18px;border-left:2px solid #ffcc0044;padding-left:10px;text-align:left}
+.ov-btn{padding:14px 36px;background:linear-gradient(135deg,#dd0000,#ffcc00);color:#000;font-size:16px;font-weight:700;border-radius:12px;letter-spacing:1px;box-shadow:0 4px 20px rgba(255,200,0,.25);transition:transform .1s}
+.ov-btn:active{transform:scale(.95)}
+
+/* HUD */
+#hud{position:absolute;top:0;left:0;right:0;z-index:50;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600;color:#aaa;pointer-events:none;opacity:0;transition:opacity .3s}
+#hud.on{opacity:1}
+.hud-phase{color:#ffcc00;font-size:11px;letter-spacing:1px}
+.hud-crowd{color:#fff}
+.hud-timer{color:#ff8844}
+
+/* Phase banner */
+#phase-banner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:80;font-size:28px;font-weight:800;color:#ffcc00;text-shadow:0 0 30px rgba(255,200,0,.5);opacity:0;pointer-events:none;letter-spacing:3px;white-space:nowrap}
+
+/* Lang toggle */
+#lang-btn{position:absolute;top:8px;right:8px;z-index:200;font-size:11px;padding:4px 8px;background:rgba(255,255,255,.1);border-radius:4px;color:#888;cursor:pointer}
+
+/* Score panel */
+#score-panel{position:absolute;top:0;left:0;right:0;bottom:0;z-index:110;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(6,6,14,.95);padding:20px;text-align:center;opacity:0;pointer-events:none;transition:opacity .6s}
+#score-panel.on{opacity:1;pointer-events:auto}
+.sc-title{font-size:24px;font-weight:800;color:#ffcc00;margin-bottom:12px;letter-spacing:2px}
+.sc-line{font-size:14px;color:#bbb;margin:4px 0;line-height:1.6}
+.sc-total{font-size:32px;font-weight:800;color:#fff;margin:14px 0}
+.sc-facts{font-size:11px;color:#776;line-height:1.8;max-width:340px;margin:12px auto;border-left:2px solid #dd000044;padding-left:10px;text-align:left}
+.sc-btn{margin-top:14px}
+</style>
+</head>
+<body>
+<canvas id="gc"></canvas>
+<div id="hud">
+  <span class="hud-phase" id="hud-phase"></span>
+  <span class="hud-crowd" id="hud-crowd"></span>
+  <span class="hud-timer" id="hud-timer"></span>
+</div>
+<div id="phase-banner"></div>
+<div id="overlay">
+  <div class="ov-year">November 9, 1989</div>
+  <div class="ov-title" id="ov-title">ベルリンの壁崩壊</div>
+  <div class="ov-sub" id="ov-sub">1961年から28年間、東西ベルリンを分断していた壁。<br>1989年11月9日の夜、歴史が動いた。</div>
+  <div class="ov-fact" id="ov-fact">
+    ギュンター・シャボウスキーの記者会見での失言が引き金となり、<br>
+    東ベルリン市民が国境検問所に殺到。<br>
+    この夜、壁は市民の手で崩壊した。
+  </div>
+  <button class="ov-btn" id="ov-btn" onclick="startGame()">▶ はじめる</button>
+</div>
+<div id="score-panel">
+  <div class="sc-title" id="sc-title">自由への壁は崩れた</div>
+  <div class="sc-line" id="sc-gathered"></div>
+  <div class="sc-line" id="sc-march"></div>
+  <div class="sc-line" id="sc-break"></div>
+  <div class="sc-total" id="sc-total"></div>
+  <div class="sc-facts" id="sc-facts"></div>
+  <button class="ov-btn sc-btn" onclick="restart()">もう一度</button>
+</div>
+<button id="lang-btn" onclick="toggleLang()">EN</button>
+
+<script>
+"use strict";
+
+/* ── i18n ── */
+const I = {
+  ja: {
+    title: 'ベルリンの壁崩壊',
+    sub: '1961年から28年間、東西ベルリンを分断していた壁。\n1989年11月9日の夜、歴史が動いた。',
+    fact: 'ギュンター・シャボウスキーの記者会見での失言が引き金となり、東ベルリン市民が国境検問所に殺到。この夜、壁は市民の手で崩壊した。',
+    start: '▶ はじめる',
+    p1name: 'PHASE 1: 噂を広めろ',
+    p2name: 'PHASE 2: 壁へ行進',
+    p3name: 'PHASE 3: 壁を壊せ！',
+    p1hud: '噂を広めろ',
+    p2hud: '壁へ行進',
+    p3hud: '壁を壊せ！',
+    crowd: '仲間',
+    timer: '残り',
+    sec: '秒',
+    p1hint: '窓をタップして市民を集めよう！シュタージに注意！',
+    p2hint: 'タップでジャンプ！障害物を避けて壁へ向かえ！',
+    p3hint: '壁をタップして打ち砕け！',
+    stasi: 'シュタージ！ −3秒',
+    scTitle: '自由への壁は崩れた',
+    scGathered: '集めた仲間',
+    scMarch: '行進ボーナス',
+    scBreak: '壁破壊タイム',
+    scTotal: '合計スコア',
+    scFact1: '• 壁の全長：155 km',
+    scFact2: '• 壁の存在期間：28年2ヶ月27日',
+    scFact3: '• 1990年10月3日 ドイツ再統一',
+    scFact4: '• 壁を越えようとして少なくとも140人が命を落とした',
+    retry: 'もう一度',
+    people: '人',
+    pts: '点',
+    lives: '♥',
+    phaseComplete: 'クリア！',
+    go: 'GO!',
+  },
+  en: {
+    title: 'Fall of the Berlin Wall',
+    sub: 'For 28 years since 1961, a wall divided Berlin.\nOn the night of November 9, 1989, history changed.',
+    fact: "Günter Schabowski's accidental press conference announcement triggered a rush of East Berliners to the border. That night, the wall fell by the people's hands.",
+    start: '▶ START',
+    p1name: 'PHASE 1: Spread the Word',
+    p2name: 'PHASE 2: March to the Wall',
+    p3name: 'PHASE 3: Break the Wall!',
+    p1hud: 'Spread the Word',
+    p2hud: 'March to the Wall',
+    p3hud: 'Break the Wall!',
+    crowd: 'Allies',
+    timer: 'Time',
+    sec: 's',
+    p1hint: 'Tap windows to rally citizens! Avoid the Stasi!',
+    p2hint: 'Tap to jump! Dodge obstacles on your way to the wall!',
+    p3hint: 'Tap the wall to smash it!',
+    stasi: 'Stasi! −3s',
+    scTitle: 'The Wall Has Fallen',
+    scGathered: 'Citizens gathered',
+    scMarch: 'March bonus',
+    scBreak: 'Wall break time',
+    scTotal: 'Total Score',
+    scFact1: '• Wall length: 155 km',
+    scFact2: '• Wall existed: 28 years 2 months 27 days',
+    scFact3: '• October 3, 1990: German reunification',
+    scFact4: '• At least 140 people died trying to cross the wall',
+    retry: 'Play Again',
+    people: '',
+    pts: 'pts',
+    lives: '♥',
+    phaseComplete: 'CLEAR!',
+    go: 'GO!',
+  }
+};
+let lang = 'ja';
+function t(k) { return I[lang][k] || k; }
+function toggleLang() {
+  lang = lang === 'ja' ? 'en' : 'ja';
+  document.getElementById('lang-btn').textContent = lang === 'ja' ? 'EN' : 'JP';
+  if (gameState === 'title') updateTitleScreen();
+  if (gameState === 'score') updateScoreScreen();
+}
+function updateTitleScreen() {
+  document.getElementById('ov-title').textContent = t('title');
+  const sub = document.getElementById('ov-sub');
+  sub.innerHTML = t('sub').replace(/\n/g, '<br>');
+  document.getElementById('ov-fact').innerHTML = t('fact');
+  document.getElementById('ov-btn').textContent = t('start');
+}
+
+/* ── Canvas ── */
+const canvas = document.getElementById('gc');
+const ctx = canvas.getContext('2d');
+let W, H, dpr;
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+resize();
+window.addEventListener('resize', resize);
+
+/* ── State ── */
+let gameState = 'title';
+let phase = 0;
+let crowd = 0;
+let score = 0;
+let frameId;
+let lastTime = 0;
+
+/* ── Phase 1 State: Gather ── */
+const P1 = {
+  windows: [],
+  timer: 35,
+  maxTimer: 35,
+  buildingRows: 4,
+  buildingCols: 5,
+  cellW: 0, cellH: 0,
+  buildingY: 0,
+  spawnInterval: 0.8,
+  spawnTimer: 0,
+  maxActive: 6,
+  hint: '',
+  hintAlpha: 1,
+  flashMsg: '',
+  flashTimer: 0,
+  stasiPenalty: 0,
+};
+
+function initP1() {
+  P1.timer = P1.maxTimer;
+  P1.windows = [];
+  P1.spawnTimer = 0;
+  P1.hint = t('p1hint');
+  P1.hintAlpha = 1;
+  P1.flashMsg = '';
+  P1.flashTimer = 0;
+  P1.stasiPenalty = 0;
+
+  const margin = 20;
+  const cols = W < 400 ? 4 : 5;
+  const rows = 4;
+  P1.buildingCols = cols;
+  P1.buildingRows = rows;
+  P1.cellW = (W - margin * 2) / cols;
+  P1.cellH = Math.min(P1.cellW * 0.8, (H * 0.55) / rows);
+  P1.buildingY = H * 0.12;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      P1.windows.push({
+        x: margin + c * P1.cellW + P1.cellW * 0.15,
+        y: P1.buildingY + r * P1.cellH + P1.cellH * 0.15,
+        w: P1.cellW * 0.7,
+        h: P1.cellH * 0.65,
+        state: 'dark',
+        type: 'none',
+        timer: 0,
+        tapAnim: 0,
+        col: c, row: r,
+      });
+    }
+  }
+}
+
+function updateP1(dt) {
+  P1.timer -= dt;
+  if (P1.timer <= 0) { P1.timer = 0; endPhase1(); return; }
+
+  P1.hintAlpha = Math.max(0, P1.hintAlpha - dt * 0.3);
+  if (P1.flashTimer > 0) P1.flashTimer -= dt;
+
+  P1.spawnTimer -= dt;
+  if (P1.spawnTimer <= 0) {
+    P1.spawnTimer = P1.spawnInterval + Math.random() * 0.4;
+    const activeCount = P1.windows.filter(w => w.state === 'active').length;
+    if (activeCount < P1.maxActive) {
+      const darkWindows = P1.windows.filter(w => w.state === 'dark');
+      if (darkWindows.length > 0) {
+        const w = darkWindows[Math.floor(Math.random() * darkWindows.length)];
+        w.state = 'active';
+        w.timer = 1.8 + Math.random() * 1.2;
+        w.type = Math.random() < 0.18 ? 'stasi' : 'citizen';
+      }
+    }
+  }
+
+  for (const w of P1.windows) {
+    if (w.tapAnim > 0) w.tapAnim -= dt * 3;
+    if (w.state === 'active') {
+      w.timer -= dt;
+      if (w.timer <= 0) {
+        w.state = 'dark';
+        w.type = 'none';
+      }
+    } else if (w.state === 'recruited') {
+      w.timer -= dt;
+      if (w.timer <= 0) {
+        w.state = 'dark';
+        w.type = 'none';
+      }
+    }
+  }
+}
+
+function drawP1() {
+  // Night sky
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+  skyGrad.addColorStop(0, '#060818');
+  skyGrad.addColorStop(0.4, '#0c1028');
+  skyGrad.addColorStop(1, '#12162a');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Stars
+  drawStars();
+
+  // Moon
+  ctx.fillStyle = '#ffeecc';
+  ctx.beginPath();
+  ctx.arc(W * 0.82, H * 0.06, 14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#060818';
+  ctx.beginPath();
+  ctx.arc(W * 0.82 + 5, H * 0.06 - 3, 12, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Building facade
+  const bx = 10;
+  const bw = W - 20;
+  const bh = P1.buildingRows * P1.cellH + 20;
+  const by = P1.buildingY - 10;
+  ctx.fillStyle = '#1a1a22';
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.strokeStyle = '#2a2a35';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(bx, by, bw, bh);
+
+  // Building texture lines
+  for (let i = 0; i < P1.buildingRows + 1; i++) {
+    const ly = P1.buildingY + i * P1.cellH - 5;
+    ctx.strokeStyle = '#222230';
+    ctx.beginPath();
+    ctx.moveTo(bx, ly);
+    ctx.lineTo(bx + bw, ly);
+    ctx.stroke();
+  }
+
+  // Windows
+  for (const w of P1.windows) {
+    const scale = 1 + w.tapAnim * 0.15;
+    const cx = w.x + w.w / 2;
+    const cy = w.y + w.h / 2;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(scale, scale);
+
+    if (w.state === 'dark') {
+      ctx.fillStyle = '#0e0e18';
+      ctx.fillRect(-w.w/2, -w.h/2, w.w, w.h);
+      ctx.strokeStyle = '#1e1e2a';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-w.w/2, -w.h/2, w.w, w.h);
+    } else if (w.state === 'active') {
+      if (w.type === 'stasi') {
+        ctx.fillStyle = '#2a1515';
+        ctx.fillRect(-w.w/2, -w.h/2, w.w, w.h);
+        ctx.strokeStyle = '#661111';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-w.w/2, -w.h/2, w.w, w.h);
+        // Stasi figure: dark silhouette with hat
+        drawStasi(0, -2, w.w * 0.4);
+      } else {
+        const warmth = '#332810';
+        ctx.fillStyle = warmth;
+        ctx.fillRect(-w.w/2, -w.h/2, w.w, w.h);
+        const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, w.w * 0.6);
+        glow.addColorStop(0, 'rgba(255,200,80,0.15)');
+        glow.addColorStop(1, 'transparent');
+        ctx.fillStyle = glow;
+        ctx.fillRect(-w.w/2, -w.h/2, w.w, w.h);
+        ctx.strokeStyle = '#ffcc44';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(-w.w/2, -w.h/2, w.w, w.h);
+        // Citizen figure
+        drawCitizen(0, -2, w.w * 0.35);
+      }
+      // Pulse indicator
+      const pulse = (Math.sin(performance.now() / 200) + 1) / 2;
+      ctx.globalAlpha = 0.3 + pulse * 0.3;
+      ctx.strokeStyle = w.type === 'stasi' ? '#ff3333' : '#ffcc44';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-w.w/2 - 3, -w.h/2 - 3, w.w + 6, w.h + 6);
+      ctx.globalAlpha = 1;
+    } else if (w.state === 'recruited') {
+      ctx.fillStyle = '#1a2a10';
+      ctx.fillRect(-w.w/2, -w.h/2, w.w, w.h);
+      ctx.strokeStyle = '#55cc66';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(-w.w/2, -w.h/2, w.w, w.h);
+      ctx.fillStyle = '#55cc66';
+      ctx.font = `bold ${w.w * 0.5}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✓', 0, 0);
+    }
+
+    ctx.restore();
+  }
+
+  // Ground
+  ctx.fillStyle = '#0e0e14';
+  ctx.fillRect(0, P1.buildingY + P1.buildingRows * P1.cellH + 10, W, H);
+
+  // Street
+  const streetY = P1.buildingY + P1.buildingRows * P1.cellH + 10;
+  ctx.fillStyle = '#1a1a20';
+  ctx.fillRect(0, streetY, W, H - streetY);
+  // Road lines
+  ctx.strokeStyle = '#2a2a30';
+  ctx.setLineDash([15, 10]);
+  ctx.beginPath();
+  ctx.moveTo(0, streetY + 20);
+  ctx.lineTo(W, streetY + 20);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Crowd gathered at bottom
+  drawCrowdP1(streetY + 30);
+
+  // HUD
+  drawP1HUD();
+
+  // Hint
+  if (P1.hintAlpha > 0) {
+    ctx.globalAlpha = P1.hintAlpha;
+    ctx.fillStyle = '#ffcc44';
+    ctx.font = `bold ${Math.min(14, W * 0.035)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(P1.hint, W / 2, H * 0.92);
+    ctx.globalAlpha = 1;
+  }
+
+  // Flash message
+  if (P1.flashTimer > 0) {
+    ctx.globalAlpha = Math.min(1, P1.flashTimer);
+    ctx.fillStyle = P1.flashMsg.includes('−') ? '#ff4444' : '#55cc66';
+    ctx.font = `bold ${Math.min(18, W * 0.045)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(P1.flashMsg, W / 2, H * 0.5);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawStasi(x, y, size) {
+  ctx.fillStyle = '#1a0808';
+  // Body
+  ctx.fillRect(x - size * 0.4, y - size * 0.2, size * 0.8, size * 1.0);
+  // Head
+  ctx.beginPath();
+  ctx.arc(x, y - size * 0.5, size * 0.35, 0, Math.PI * 2);
+  ctx.fill();
+  // Hat
+  ctx.fillRect(x - size * 0.5, y - size * 0.8, size * 1.0, size * 0.2);
+  ctx.fillRect(x - size * 0.3, y - size * 1.0, size * 0.6, size * 0.25);
+  // Sunglasses
+  ctx.fillStyle = '#440000';
+  ctx.fillRect(x - size * 0.3, y - size * 0.55, size * 0.22, size * 0.12);
+  ctx.fillRect(x + size * 0.08, y - size * 0.55, size * 0.22, size * 0.12);
+}
+
+function drawCitizen(x, y, size) {
+  ctx.fillStyle = '#cc9955';
+  // Head
+  ctx.beginPath();
+  ctx.arc(x, y - size * 0.5, size * 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  // Body
+  ctx.fillStyle = '#8888aa';
+  ctx.fillRect(x - size * 0.35, y - size * 0.15, size * 0.7, size * 0.85);
+  // Arm wave
+  ctx.strokeStyle = '#8888aa';
+  ctx.lineWidth = size * 0.15;
+  ctx.lineCap = 'round';
+  const wave = Math.sin(performance.now() / 300) * 0.3;
+  ctx.beginPath();
+  ctx.moveTo(x + size * 0.35, y);
+  ctx.lineTo(x + size * 0.6, y - size * 0.4 + wave * size);
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+}
+
+function drawCrowdP1(y) {
+  if (crowd <= 0) return;
+  const count = Math.min(crowd, 30);
+  const spacing = Math.min(W / (count + 2), 18);
+  const startX = W / 2 - (count * spacing) / 2;
+  for (let i = 0; i < count; i++) {
+    const px = startX + i * spacing + Math.sin(i * 1.7) * 3;
+    const py = y + Math.sin(i * 2.3 + performance.now() / 500) * 2;
+    const sz = 5;
+    ctx.fillStyle = `hsl(${40 + i * 8}, 50%, ${55 + (i % 3) * 10}%)`;
+    ctx.beginPath();
+    ctx.arc(px, py - sz, sz * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(px - sz * 0.25, py - sz * 0.5, sz * 0.5, sz * 0.7);
+  }
+}
+
+function drawP1HUD() {
+  // Timer bar at top
+  const pct = P1.timer / P1.maxTimer;
+  ctx.fillStyle = pct < 0.25 ? '#ff4444' : pct < 0.5 ? '#ffaa44' : '#44cc66';
+  ctx.fillRect(0, 0, W * pct, 4);
+
+  const hudEl = document.getElementById('hud');
+  hudEl.classList.add('on');
+  document.getElementById('hud-phase').textContent = t('p1hud');
+  document.getElementById('hud-crowd').textContent = `${t('crowd')}: ${crowd}`;
+  document.getElementById('hud-timer').textContent = `${Math.ceil(P1.timer)}${t('sec')}`;
+}
+
+function tapP1(x, y) {
+  for (const w of P1.windows) {
+    if (w.state !== 'active') continue;
+    if (x >= w.x && x <= w.x + w.w && y >= w.y && y <= w.y + w.h) {
+      w.tapAnim = 1;
+      if (w.type === 'citizen') {
+        w.state = 'recruited';
+        w.timer = 0.6;
+        crowd++;
+        score += 100;
+        P1.flashMsg = `+1 ${t('crowd')}!`;
+        P1.flashTimer = 0.8;
+      } else if (w.type === 'stasi') {
+        w.state = 'dark';
+        w.type = 'none';
+        P1.timer = Math.max(0, P1.timer - 3);
+        P1.stasiPenalty++;
+        P1.flashMsg = t('stasi');
+        P1.flashTimer = 1.0;
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+function endPhase1() {
+  if (crowd < 1) crowd = 1;
+  showPhaseBanner(t('phaseComplete'), () => {
+    phase = 2;
+    initP2();
+  });
+}
+
+/* ── Phase 2 State: March ── */
+const P2 = {
+  playerX: 0, playerY: 0,
+  vy: 0,
+  jumping: false,
+  groundY: 0,
+  scrollX: 0,
+  speed: 180,
+  lives: 3,
+  obstacles: [],
+  collectibles: [],
+  distance: 0,
+  totalDist: 2500,
+  wallVisible: false,
+  invincible: 0,
+  marchers: [],
+  hint: '',
+  hintAlpha: 1,
+  buildings: [],
+  streetLamps: [],
+};
+
+function initP2() {
+  P2.groundY = H * 0.72;
+  P2.playerX = W * 0.18;
+  P2.playerY = P2.groundY;
+  P2.vy = 0;
+  P2.jumping = false;
+  P2.scrollX = 0;
+  P2.speed = 150 + Math.min(crowd * 2, 60);
+  P2.lives = 3;
+  P2.obstacles = [];
+  P2.collectibles = [];
+  P2.distance = 0;
+  P2.totalDist = 2200;
+  P2.wallVisible = false;
+  P2.invincible = 0;
+  P2.hint = t('p2hint');
+  P2.hintAlpha = 1;
+
+  // Generate marchers behind player
+  P2.marchers = [];
+  const mc = Math.min(crowd, 20);
+  for (let i = 0; i < mc; i++) {
+    P2.marchers.push({
+      offX: -20 - i * 12 - Math.random() * 8,
+      offY: (Math.random() - 0.5) * 16,
+      bobPhase: Math.random() * Math.PI * 2,
+      hue: 30 + Math.random() * 30,
+    });
+  }
+
+  // Generate background buildings
+  P2.buildings = [];
+  for (let i = 0; i < 60; i++) {
+    P2.buildings.push({
+      x: i * 120 + Math.random() * 40,
+      w: 50 + Math.random() * 60,
+      h: 60 + Math.random() * 100,
+      color: `hsl(${220 + Math.random()*20}, ${8 + Math.random()*6}%, ${10 + Math.random()*8}%)`,
+      windows: Math.floor(2 + Math.random() * 3),
+    });
+  }
+
+  // Street lamps
+  P2.streetLamps = [];
+  for (let i = 0; i < 30; i++) {
+    P2.streetLamps.push({ x: 200 + i * 250 });
+  }
+
+  // Pre-generate obstacles
+  for (let i = 0; i < 20; i++) {
+    const d = 350 + i * 130 + Math.random() * 60;
+    const type = Math.random();
+    if (type < 0.45) {
+      P2.obstacles.push({ dist: d, type: 'trabant', w: 50, h: 28 });
+    } else if (type < 0.75) {
+      P2.obstacles.push({ dist: d, type: 'barrier', w: 35, h: 35 });
+    } else {
+      P2.obstacles.push({ dist: d, type: 'sign', w: 20, h: 40 });
+    }
+  }
+
+  // Collectible people
+  for (let i = 0; i < 10; i++) {
+    const d = 250 + i * 200 + Math.random() * 100;
+    P2.collectibles.push({ dist: d, collected: false });
+  }
+}
+
+function updateP2(dt) {
+  P2.hintAlpha = Math.max(0, P2.hintAlpha - dt * 0.4);
+  if (P2.invincible > 0) P2.invincible -= dt;
+
+  P2.distance += P2.speed * dt;
+  P2.scrollX = P2.distance;
+
+  // Gravity
+  if (P2.jumping) {
+    P2.vy += 1200 * dt;
+    P2.playerY += P2.vy * dt;
+    if (P2.playerY >= P2.groundY) {
+      P2.playerY = P2.groundY;
+      P2.vy = 0;
+      P2.jumping = false;
+    }
+  }
+
+  // Check obstacle collision
+  for (const obs of P2.obstacles) {
+    const ox = obs.dist - P2.distance + P2.playerX + 60;
+    if (ox > P2.playerX - 15 && ox < P2.playerX + 15) {
+      const obsTop = P2.groundY - obs.h;
+      if (P2.playerY > obsTop && P2.invincible <= 0) {
+        P2.lives--;
+        P2.invincible = 1.5;
+        if (P2.lives <= 0) {
+          P2.lives = 1;
+          crowd = Math.max(1, crowd - 2);
+        }
+      }
+    }
+  }
+
+  // Check collectibles
+  for (const col of P2.collectibles) {
+    if (col.collected) continue;
+    const cx = col.dist - P2.distance + P2.playerX + 60;
+    if (cx > P2.playerX - 20 && cx < P2.playerX + 20) {
+      col.collected = true;
+      crowd++;
+      score += 50;
+      P2.marchers.push({
+        offX: -20 - P2.marchers.length * 12,
+        offY: (Math.random() - 0.5) * 16,
+        bobPhase: Math.random() * Math.PI * 2,
+        hue: 30 + Math.random() * 30,
+      });
+    }
+  }
+
+  // Check if reached the wall
+  if (P2.distance >= P2.totalDist) {
+    endPhase2();
+  }
+
+  // Marcher bobbing
+  for (const m of P2.marchers) {
+    m.bobPhase += dt * 6;
+  }
+}
+
+function drawP2() {
+  // Night sky
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+  skyGrad.addColorStop(0, '#060818');
+  skyGrad.addColorStop(0.3, '#0a0e22');
+  skyGrad.addColorStop(0.7, '#0e1228');
+  skyGrad.addColorStop(1, '#12162a');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  drawStars();
+
+  // Background buildings (parallax)
+  for (const b of P2.buildings) {
+    const bx = b.x - P2.scrollX * 0.3;
+    const screenX = ((bx % (W * 3)) + W * 3) % (W * 3) - W * 0.5;
+    if (screenX < -b.w - 20 || screenX > W + 20) continue;
+    ctx.fillStyle = b.color;
+    ctx.fillRect(screenX, P2.groundY - 40 - b.h, b.w, b.h + 40);
+    // Windows
+    for (let wy = 0; wy < b.windows; wy++) {
+      for (let wx = 0; wx < 2; wx++) {
+        const winLit = Math.sin(screenX * 0.1 + wy * 2 + wx * 3) > 0;
+        ctx.fillStyle = winLit ? 'rgba(255,200,100,0.15)' : 'rgba(0,0,0,0.3)';
+        ctx.fillRect(screenX + 8 + wx * (b.w * 0.4), P2.groundY - 35 - b.h + 12 + wy * 25, b.w * 0.25, 15);
+      }
+    }
+  }
+
+  // Street lamps (parallax)
+  for (const lamp of P2.streetLamps) {
+    const lx = lamp.x - P2.scrollX * 0.7;
+    const screenX = ((lx % (W * 2)) + W * 2) % (W * 2) - W * 0.2;
+    if (screenX < -30 || screenX > W + 30) continue;
+    ctx.fillStyle = '#222';
+    ctx.fillRect(screenX - 2, P2.groundY - 55, 4, 55);
+    ctx.fillStyle = '#ffcc44';
+    ctx.beginPath();
+    ctx.arc(screenX, P2.groundY - 58, 5, 0, Math.PI * 2);
+    ctx.fill();
+    // Glow
+    const glowGrad = ctx.createRadialGradient(screenX, P2.groundY - 50, 0, screenX, P2.groundY - 30, 50);
+    glowGrad.addColorStop(0, 'rgba(255,200,80,0.08)');
+    glowGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = glowGrad;
+    ctx.fillRect(screenX - 50, P2.groundY - 80, 100, 80);
+  }
+
+  // Ground
+  ctx.fillStyle = '#1a1a22';
+  ctx.fillRect(0, P2.groundY, W, H - P2.groundY);
+  // Road line
+  ctx.strokeStyle = '#2a2a33';
+  ctx.setLineDash([12, 8]);
+  const dashOff = -P2.scrollX * 0.7 % 20;
+  ctx.lineDashOffset = dashOff;
+  ctx.beginPath();
+  ctx.moveTo(0, P2.groundY + 15);
+  ctx.lineTo(W, P2.groundY + 15);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.lineDashOffset = 0;
+
+  // Wall in distance (grows as you approach)
+  const wallProgress = Math.max(0, P2.distance / P2.totalDist - 0.4) / 0.6;
+  if (wallProgress > 0) {
+    const wallH = 20 + wallProgress * 120;
+    const wallY = P2.groundY - wallH;
+    ctx.fillStyle = '#555';
+    ctx.fillRect(W * 0.75, wallY, W * 0.25 + 20, wallH);
+    ctx.fillStyle = '#666';
+    ctx.fillRect(W * 0.75, wallY, W * 0.25 + 20, 6);
+    // Graffiti marks
+    if (wallProgress > 0.3) {
+      ctx.globalAlpha = wallProgress;
+      ctx.fillStyle = '#ff4444';
+      ctx.font = `bold ${8 + wallProgress * 8}px sans-serif`;
+      ctx.fillText('FREIHEIT', W * 0.8, wallY + wallH * 0.4);
+      ctx.fillStyle = '#44aaff';
+      ctx.fillText('✌', W * 0.85, wallY + wallH * 0.7);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Obstacles
+  for (const obs of P2.obstacles) {
+    const ox = obs.dist - P2.distance + P2.playerX + 60;
+    if (ox < -60 || ox > W + 60) continue;
+    if (obs.type === 'trabant') {
+      // Trabant car
+      ctx.fillStyle = '#3a5a4a';
+      ctx.fillRect(ox - obs.w/2, P2.groundY - obs.h, obs.w, obs.h);
+      ctx.fillStyle = '#2a4a3a';
+      ctx.fillRect(ox - obs.w/2 + 5, P2.groundY - obs.h - 10, obs.w - 15, 12);
+      // Wheels
+      ctx.fillStyle = '#111';
+      ctx.beginPath();
+      ctx.arc(ox - obs.w/2 + 10, P2.groundY, 6, 0, Math.PI * 2);
+      ctx.arc(ox + obs.w/2 - 10, P2.groundY, 6, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (obs.type === 'barrier') {
+      ctx.fillStyle = '#aa3333';
+      ctx.fillRect(ox - obs.w/2, P2.groundY - obs.h, obs.w, obs.h);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(ox - obs.w/2, P2.groundY - obs.h + 8, obs.w, 4);
+      ctx.fillRect(ox - obs.w/2, P2.groundY - obs.h + 20, obs.w, 4);
+    } else if (obs.type === 'sign') {
+      ctx.fillStyle = '#444';
+      ctx.fillRect(ox - 2, P2.groundY - obs.h, 4, obs.h);
+      ctx.fillStyle = '#cc3333';
+      ctx.beginPath();
+      ctx.arc(ox, P2.groundY - obs.h - 8, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✕', ox, P2.groundY - obs.h - 8);
+    }
+  }
+
+  // Collectible people
+  for (const col of P2.collectibles) {
+    if (col.collected) continue;
+    const cx = col.dist - P2.distance + P2.playerX + 60;
+    if (cx < -20 || cx > W + 20) continue;
+    const bob = Math.sin(performance.now() / 400 + col.dist) * 3;
+    ctx.fillStyle = '#ffcc44';
+    ctx.beginPath();
+    ctx.arc(cx, P2.groundY - 18 + bob, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#dda833';
+    ctx.fillRect(cx - 4, P2.groundY - 12 + bob, 8, 12);
+    // Glow
+    ctx.fillStyle = 'rgba(255,200,68,0.15)';
+    ctx.beginPath();
+    ctx.arc(cx, P2.groundY - 12 + bob, 14, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Marchers
+  for (const m of P2.marchers) {
+    const mx = P2.playerX + m.offX;
+    const my = P2.groundY + m.offY + Math.sin(m.bobPhase) * 2;
+    if (mx < -10) continue;
+    ctx.fillStyle = `hsl(${m.hue}, 45%, 55%)`;
+    ctx.beginPath();
+    ctx.arc(mx, my - 8, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(mx - 3, my - 4, 6, 8);
+  }
+
+  // Player
+  const blink = P2.invincible > 0 && Math.sin(P2.invincible * 15) > 0;
+  if (!blink) {
+    const py = P2.playerY;
+    // Head
+    ctx.fillStyle = '#dda855';
+    ctx.beginPath();
+    ctx.arc(P2.playerX, py - 22, 7, 0, Math.PI * 2);
+    ctx.fill();
+    // Body
+    ctx.fillStyle = '#4466aa';
+    ctx.fillRect(P2.playerX - 6, py - 15, 12, 15);
+    // Legs (running)
+    const legPhase = performance.now() / 120;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(P2.playerX - 4 + Math.sin(legPhase) * 3, py, 3, 8);
+    ctx.fillRect(P2.playerX + 1 - Math.sin(legPhase) * 3, py, 3, 8);
+    // Arm with flag
+    ctx.strokeStyle = '#4466aa';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(P2.playerX + 6, py - 12);
+    ctx.lineTo(P2.playerX + 14, py - 20);
+    ctx.stroke();
+    // Flag
+    ctx.fillStyle = '#000';
+    ctx.fillRect(P2.playerX + 14, py - 26, 12, 4);
+    ctx.fillStyle = '#dd0000';
+    ctx.fillRect(P2.playerX + 14, py - 22, 12, 4);
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillRect(P2.playerX + 14, py - 18, 12, 4);
+    ctx.lineCap = 'butt';
+  }
+
+  // HUD
+  document.getElementById('hud-phase').textContent = t('p2hud');
+  document.getElementById('hud-crowd').textContent = `${t('crowd')}: ${crowd}`;
+  document.getElementById('hud-timer').textContent = t('lives') + ' '.repeat(P2.lives);
+
+  // Progress bar
+  const prog = P2.distance / P2.totalDist;
+  ctx.fillStyle = '#222';
+  ctx.fillRect(W * 0.1, H - 20, W * 0.8, 6);
+  ctx.fillStyle = '#ffcc44';
+  ctx.fillRect(W * 0.1, H - 20, W * 0.8 * Math.min(1, prog), 6);
+  // Runner icon on progress bar
+  ctx.fillStyle = '#fff';
+  ctx.font = '10px sans-serif';
+  ctx.fillText('🏃', W * 0.1 + W * 0.8 * Math.min(1, prog) - 6, H - 10);
+
+  // Hint
+  if (P2.hintAlpha > 0) {
+    ctx.globalAlpha = P2.hintAlpha;
+    ctx.fillStyle = '#ffcc44';
+    ctx.font = `bold ${Math.min(14, W * 0.035)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(P2.hint, W / 2, H * 0.5);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function tapP2() {
+  if (!P2.jumping) {
+    P2.jumping = true;
+    P2.vy = -420;
+  }
+}
+
+function endPhase2() {
+  score += crowd * 30;
+  showPhaseBanner(t('phaseComplete'), () => {
+    phase = 3;
+    initP3();
+  });
+}
+
+/* ── Phase 3 State: Break the Wall ── */
+const P3 = {
+  segments: [],
+  totalHP: 0,
+  currentHP: 0,
+  timer: 0,
+  particles: [],
+  cracks: [],
+  wallY: 0,
+  wallH: 0,
+  helperRate: 0,
+  helperTimer: 0,
+  wallBroken: false,
+  shakeX: 0, shakeY: 0,
+  lightRays: [],
+  hint: '',
+  hintAlpha: 1,
+  graffiti: [],
+};
+
+const GRAFFITI = [
+  { text: 'FREIHEIT', color: '#ff4444' },
+  { text: 'FREEDOM', color: '#44aaff' },
+  { text: '自由', color: '#ffcc44' },
+  { text: '✌ PEACE', color: '#44ff88' },
+  { text: '1989', color: '#ff88ff' },
+  { text: 'EINHEIT', color: '#ffaa44' },
+  { text: 'LIBERTÉ', color: '#ff6688' },
+  { text: '希望', color: '#88ddff' },
+];
+
+function initP3() {
+  const segCols = W < 400 ? 3 : 4;
+  const segRows = 3;
+  P3.wallY = H * 0.12;
+  P3.wallH = H * 0.65;
+  const segW = (W - 20) / segCols;
+  const segH = P3.wallH / segRows;
+  P3.segments = [];
+  const hpPerSeg = Math.max(8, 20 - Math.floor(crowd / 3));
+
+  for (let r = 0; r < segRows; r++) {
+    for (let c = 0; c < segCols; c++) {
+      P3.segments.push({
+        x: 10 + c * segW,
+        y: P3.wallY + r * segH,
+        w: segW,
+        h: segH,
+        hp: hpPerSeg,
+        maxHP: hpPerSeg,
+        broken: false,
+        breakAnim: 0,
+      });
+    }
+  }
+
+  P3.totalHP = P3.segments.length * hpPerSeg;
+  P3.currentHP = P3.totalHP;
+  P3.timer = 0;
+  P3.particles = [];
+  P3.cracks = [];
+  P3.helperRate = Math.min(crowd * 0.12, 4);
+  P3.helperTimer = 0;
+  P3.wallBroken = false;
+  P3.shakeX = 0;
+  P3.shakeY = 0;
+  P3.hint = t('p3hint');
+  P3.hintAlpha = 1;
+  P3.lightRays = [];
+
+  // Place graffiti
+  P3.graffiti = [];
+  const shuffled = [...GRAFFITI].sort(() => Math.random() - 0.5);
+  for (let i = 0; i < Math.min(6, P3.segments.length); i++) {
+    const seg = P3.segments[i];
+    P3.graffiti.push({
+      ...shuffled[i % shuffled.length],
+      x: seg.x + seg.w * (0.2 + Math.random() * 0.5),
+      y: seg.y + seg.h * (0.3 + Math.random() * 0.4),
+      size: 10 + Math.random() * 6,
+      angle: (Math.random() - 0.5) * 0.15,
+      segIdx: i,
+    });
+  }
+}
+
+function updateP3(dt) {
+  if (P3.wallBroken) return;
+
+  P3.timer += dt;
+  P3.hintAlpha = Math.max(0, P3.hintAlpha - dt * 0.3);
+
+  // Shake decay
+  P3.shakeX *= 0.9;
+  P3.shakeY *= 0.9;
+
+  // Helper auto-taps
+  P3.helperTimer += dt;
+  if (P3.helperTimer >= 0.5 && P3.helperRate > 0) {
+    P3.helperTimer = 0;
+    const hits = Math.floor(P3.helperRate);
+    for (let i = 0; i < hits; i++) {
+      const alive = P3.segments.filter(s => !s.broken);
+      if (alive.length > 0) {
+        const seg = alive[Math.floor(Math.random() * alive.length)];
+        hitSegment(seg, seg.x + seg.w / 2, seg.y + seg.h / 2, true);
+      }
+    }
+  }
+
+  // Particles
+  for (let i = P3.particles.length - 1; i >= 0; i--) {
+    const p = P3.particles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 400 * dt;
+    p.life -= dt;
+    if (p.life <= 0) P3.particles.splice(i, 1);
+  }
+
+  // Light rays through broken segments
+  P3.lightRays = [];
+  for (const seg of P3.segments) {
+    if (seg.broken) {
+      P3.lightRays.push({
+        x: seg.x + seg.w / 2,
+        y: seg.y,
+        w: seg.w,
+        h: seg.h,
+      });
+    }
+  }
+
+  // Check all broken
+  if (P3.segments.every(s => s.broken)) {
+    P3.wallBroken = true;
+    setTimeout(showScore, 1500);
+  }
+
+  // Break animation
+  for (const seg of P3.segments) {
+    if (seg.breakAnim > 0) seg.breakAnim -= dt * 2;
+  }
+}
+
+function drawP3() {
+  ctx.save();
+  ctx.translate(P3.shakeX, P3.shakeY);
+
+  // Sky gradient - brighter behind wall (West Berlin lights)
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+  skyGrad.addColorStop(0, '#060818');
+  skyGrad.addColorStop(0.3, '#0a0e22');
+  skyGrad.addColorStop(1, '#12162a');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(-5, -5, W + 10, H + 10);
+
+  // West Berlin warm glow behind wall
+  const warmGlow = ctx.createRadialGradient(W / 2, P3.wallY + P3.wallH / 2, 10, W / 2, P3.wallY + P3.wallH / 2, W * 0.8);
+  warmGlow.addColorStop(0, 'rgba(255,200,80,0.12)');
+  warmGlow.addColorStop(0.5, 'rgba(255,180,60,0.06)');
+  warmGlow.addColorStop(1, 'transparent');
+  ctx.fillStyle = warmGlow;
+  ctx.fillRect(-5, -5, W + 10, H + 10);
+
+  // Light rays through broken segments
+  for (const ray of P3.lightRays) {
+    const rayGrad = ctx.createLinearGradient(ray.x, ray.y, ray.x, ray.y + ray.h);
+    rayGrad.addColorStop(0, 'rgba(255,220,100,0.25)');
+    rayGrad.addColorStop(1, 'rgba(255,200,80,0.05)');
+    ctx.fillStyle = rayGrad;
+    ctx.fillRect(ray.x, ray.y, ray.w, ray.h);
+  }
+
+  // Wall segments
+  for (const seg of P3.segments) {
+    if (seg.broken) continue;
+
+    const dmgPct = 1 - seg.hp / seg.maxHP;
+    const r = Math.floor(90 + dmgPct * 40);
+    const g = Math.floor(90 + dmgPct * 20);
+    const b = Math.floor(90 - dmgPct * 20);
+
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(seg.x, seg.y, seg.w, seg.h);
+
+    // Concrete texture
+    ctx.strokeStyle = `rgba(${60 + dmgPct * 40},${60 + dmgPct * 20},${60 - dmgPct * 10},0.4)`;
+    ctx.lineWidth = 1;
+    // Horizontal lines
+    for (let i = 1; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(seg.x, seg.y + seg.h * i / 3);
+      ctx.lineTo(seg.x + seg.w, seg.y + seg.h * i / 3);
+      ctx.stroke();
+    }
+    // Vertical lines
+    for (let i = 1; i < 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(seg.x + seg.w * i / 4, seg.y);
+      ctx.lineTo(seg.x + seg.w * i / 4, seg.y + seg.h);
+      ctx.stroke();
+    }
+
+    // Segment border
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(seg.x, seg.y, seg.w, seg.h);
+
+    // Damage cracks
+    if (dmgPct > 0.2) {
+      ctx.strokeStyle = `rgba(40,30,20,${dmgPct * 0.8})`;
+      ctx.lineWidth = 1 + dmgPct;
+      const cx = seg.x + seg.w / 2;
+      const cy = seg.y + seg.h / 2;
+      for (let i = 0; i < Math.floor(dmgPct * 5); i++) {
+        const angle = (i / 5) * Math.PI * 2 + seg.x * 0.01;
+        const len = seg.w * 0.2 * dmgPct + i * 3;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(angle) * len, cy + Math.sin(angle) * len);
+        ctx.stroke();
+      }
+    }
+
+    // Hit flash
+    if (seg.breakAnim > 0) {
+      ctx.fillStyle = `rgba(255,255,200,${seg.breakAnim * 0.4})`;
+      ctx.fillRect(seg.x, seg.y, seg.w, seg.h);
+    }
+
+    // HP indicator
+    const hpPct = seg.hp / seg.maxHP;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(seg.x + seg.w * 0.15, seg.y + seg.h - 10, seg.w * 0.7, 4);
+    ctx.fillStyle = hpPct > 0.5 ? '#55cc66' : hpPct > 0.25 ? '#ffaa44' : '#ff4444';
+    ctx.fillRect(seg.x + seg.w * 0.15, seg.y + seg.h - 10, seg.w * 0.7 * hpPct, 4);
+  }
+
+  // Graffiti
+  for (const g of P3.graffiti) {
+    const seg = P3.segments[g.segIdx];
+    if (!seg || seg.broken) continue;
+    ctx.save();
+    ctx.translate(g.x, g.y);
+    ctx.rotate(g.angle);
+    ctx.fillStyle = g.color;
+    ctx.globalAlpha = 0.7;
+    ctx.font = `bold ${g.size}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(g.text, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // Wall top
+  ctx.fillStyle = '#555';
+  ctx.fillRect(5, P3.wallY - 8, W - 10, 8);
+  // Pipe on top
+  ctx.fillStyle = '#666';
+  ctx.beginPath();
+  ctx.arc(-5, P3.wallY - 8, 6, 0, Math.PI, true);
+  for (let x = -5; x < W + 10; x += 1) {
+    ctx.lineTo(x, P3.wallY - 14);
+  }
+  ctx.fill();
+
+  // Particles
+  for (const p of P3.particles) {
+    ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+  }
+  ctx.globalAlpha = 1;
+
+  // Ground
+  ctx.fillStyle = '#12121a';
+  ctx.fillRect(0, P3.wallY + P3.wallH, W, H - P3.wallY - P3.wallH);
+
+  // Crowd at bottom (helpers)
+  drawCrowdP3();
+
+  // Celebration if wall broken
+  if (P3.wallBroken) {
+    drawCelebration();
+  }
+
+  ctx.restore();
+
+  // HUD
+  document.getElementById('hud-phase').textContent = t('p3hud');
+  document.getElementById('hud-crowd').textContent = `${t('crowd')}: ${crowd}`;
+  const brokenCount = P3.segments.filter(s => s.broken).length;
+  document.getElementById('hud-timer').textContent = `${brokenCount}/${P3.segments.length}`;
+
+  // Total wall HP bar
+  const totalAlive = P3.segments.reduce((a, s) => a + (s.broken ? 0 : s.hp), 0);
+  const totalMax = P3.segments.reduce((a, s) => a + s.maxHP, 0);
+  const wallPct = 1 - totalAlive / totalMax;
+  ctx.fillStyle = '#222';
+  ctx.fillRect(W * 0.1, H - 20, W * 0.8, 6);
+  const barGrad = ctx.createLinearGradient(W * 0.1, 0, W * 0.1 + W * 0.8, 0);
+  barGrad.addColorStop(0, '#dd0000');
+  barGrad.addColorStop(0.5, '#ffcc00');
+  barGrad.addColorStop(1, '#44cc66');
+  ctx.fillStyle = barGrad;
+  ctx.fillRect(W * 0.1, H - 20, W * 0.8 * wallPct, 6);
+
+  // Hint
+  if (P3.hintAlpha > 0) {
+    ctx.globalAlpha = P3.hintAlpha;
+    ctx.fillStyle = '#ffcc44';
+    ctx.font = `bold ${Math.min(14, W * 0.035)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(P3.hint, W / 2, H * 0.88);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawCrowdP3() {
+  const y = P3.wallY + P3.wallH + 15;
+  const count = Math.min(crowd, 35);
+  const spacing = Math.min((W - 20) / (count + 1), 16);
+  const startX = W / 2 - (count * spacing) / 2;
+  for (let i = 0; i < count; i++) {
+    const px = startX + i * spacing;
+    const py = y + Math.sin(i * 1.3 + performance.now() / 400) * 2;
+    const sz = 4;
+    ctx.fillStyle = `hsl(${30 + i * 9}, 50%, ${50 + (i % 4) * 8}%)`;
+    ctx.beginPath();
+    ctx.arc(px, py, sz, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(px - sz * 0.4, py + sz, sz * 0.8, sz * 1.2);
+    // Some hold hammers (animation)
+    if (i % 3 === 0) {
+      const hammerAngle = Math.sin(performance.now() / 200 + i) * 0.5;
+      ctx.save();
+      ctx.translate(px + sz, py);
+      ctx.rotate(hammerAngle - 0.8);
+      ctx.fillStyle = '#8B4513';
+      ctx.fillRect(0, 0, 2, -8);
+      ctx.fillStyle = '#888';
+      ctx.fillRect(-2, -10, 5, 4);
+      ctx.restore();
+    }
+  }
+}
+
+let celebFireworks = [];
+function drawCelebration() {
+  // Generate fireworks
+  if (celebFireworks.length < 30) {
+    for (let i = 0; i < 3; i++) {
+      celebFireworks.push({
+        x: Math.random() * W,
+        y: Math.random() * H * 0.6,
+        color: ['#ffcc00', '#dd0000', '#000', '#ff8844', '#44aaff', '#ff66aa'][Math.floor(Math.random() * 6)],
+        size: 2 + Math.random() * 4,
+        life: 0.5 + Math.random() * 1,
+        maxLife: 1.5,
+        vx: (Math.random() - 0.5) * 100,
+        vy: (Math.random() - 0.5) * 100 - 50,
+      });
+    }
+  }
+
+  for (let i = celebFireworks.length - 1; i >= 0; i--) {
+    const fw = celebFireworks[i];
+    fw.x += fw.vx * 0.016;
+    fw.y += fw.vy * 0.016;
+    fw.vy += 30 * 0.016;
+    fw.life -= 0.016;
+    if (fw.life <= 0) { celebFireworks.splice(i, 1); continue; }
+    ctx.globalAlpha = fw.life / fw.maxLife;
+    ctx.fillStyle = fw.color;
+    ctx.beginPath();
+    ctx.arc(fw.x, fw.y, fw.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Bright warm glow flooding through
+  const flood = ctx.createRadialGradient(W / 2, P3.wallY + P3.wallH / 2, 0, W / 2, P3.wallY + P3.wallH / 2, W);
+  flood.addColorStop(0, 'rgba(255,220,100,0.2)');
+  flood.addColorStop(0.5, 'rgba(255,200,80,0.08)');
+  flood.addColorStop(1, 'transparent');
+  ctx.fillStyle = flood;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function hitSegment(seg, x, y, isHelper) {
+  if (seg.broken) return;
+  seg.hp--;
+  seg.breakAnim = 1;
+  P3.shakeX = (Math.random() - 0.5) * 4;
+  P3.shakeY = (Math.random() - 0.5) * 3;
+
+  if (!isHelper) score += 10;
+
+  // Spawn particles
+  for (let i = 0; i < 4; i++) {
+    P3.particles.push({
+      x: x + (Math.random() - 0.5) * 20,
+      y: y + (Math.random() - 0.5) * 20,
+      vx: (Math.random() - 0.5) * 200,
+      vy: -100 - Math.random() * 150,
+      size: 2 + Math.random() * 4,
+      color: ['#999', '#888', '#777', '#aaa'][Math.floor(Math.random() * 4)],
+      life: 0.5 + Math.random() * 0.5,
+      maxLife: 1,
+    });
+  }
+
+  if (seg.hp <= 0) {
+    seg.broken = true;
+    score += 200;
+    // Big break particles
+    for (let i = 0; i < 20; i++) {
+      P3.particles.push({
+        x: seg.x + Math.random() * seg.w,
+        y: seg.y + Math.random() * seg.h,
+        vx: (Math.random() - 0.5) * 300,
+        vy: -50 - Math.random() * 200,
+        size: 3 + Math.random() * 6,
+        color: ['#777', '#888', '#666', '#999', '#aaa'][Math.floor(Math.random() * 5)],
+        life: 1 + Math.random() * 1,
+        maxLife: 2,
+      });
+    }
+  }
+}
+
+function tapP3(x, y) {
+  for (const seg of P3.segments) {
+    if (seg.broken) continue;
+    if (x >= seg.x && x <= seg.x + seg.w && y >= seg.y && y <= seg.y + seg.h) {
+      hitSegment(seg, x, y, false);
+      return true;
+    }
+  }
+  return false;
+}
+
+/* ── Stars (shared) ── */
+let stars = [];
+function initStars() {
+  stars = [];
+  for (let i = 0; i < 80; i++) {
+    stars.push({
+      x: Math.random(),
+      y: Math.random() * 0.5,
+      size: Math.random() < 0.15 ? 1.5 : 0.8,
+      alpha: 0.3 + Math.random() * 0.7,
+      twinkle: Math.random() * Math.PI * 2,
+    });
+  }
+}
+initStars();
+
+function drawStars() {
+  for (const s of stars) {
+    const twinkle = Math.sin(performance.now() / 1000 + s.twinkle) * 0.3;
+    ctx.globalAlpha = Math.max(0.1, s.alpha + twinkle);
+    ctx.fillStyle = '#fffff0';
+    ctx.beginPath();
+    ctx.arc(s.x * W, s.y * H, s.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ── Phase banner ── */
+function showPhaseBanner(text, cb) {
+  const el = document.getElementById('phase-banner');
+  el.textContent = text;
+  el.style.opacity = '1';
+  el.style.transform = 'translate(-50%,-50%) scale(1.2)';
+  el.style.transition = 'opacity 0.4s, transform 0.4s';
+  setTimeout(() => {
+    el.style.transform = 'translate(-50%,-50%) scale(1)';
+  }, 50);
+  setTimeout(() => {
+    el.style.opacity = '0';
+    setTimeout(() => {
+      if (cb) cb();
+      // Show next phase name
+      if (phase === 2) {
+        showPhaseIntro(t('p2name'));
+      } else if (phase === 3) {
+        showPhaseIntro(t('p3name'));
+      }
+    }, 300);
+  }, 1200);
+}
+
+function showPhaseIntro(text) {
+  const el = document.getElementById('phase-banner');
+  el.textContent = text;
+  el.style.opacity = '1';
+  el.style.transform = 'translate(-50%,-50%) scale(0.8)';
+  el.style.transition = 'opacity 0.4s, transform 0.4s';
+  setTimeout(() => {
+    el.style.transform = 'translate(-50%,-50%) scale(1)';
+  }, 50);
+  setTimeout(() => {
+    el.style.opacity = '0';
+  }, 1800);
+}
+
+/* ── Score screen ── */
+function showScore() {
+  const breakTime = Math.round(P3.timer * 10) / 10;
+  const timeBonus = Math.max(0, Math.floor((120 - P3.timer) * 10));
+  const totalScore = score + timeBonus;
+
+  document.getElementById('sc-title').textContent = t('scTitle');
+  document.getElementById('sc-gathered').textContent = `${t('scGathered')}: ${crowd}${t('people')} → ${crowd * 100}${t('pts')}`;
+  document.getElementById('sc-march').textContent = `${t('scMarch')}: ${crowd * 30}${t('pts')}`;
+  document.getElementById('sc-break').textContent = `${t('scBreak')}: ${breakTime}${t('sec')} → +${timeBonus}${t('pts')}`;
+  document.getElementById('sc-total').textContent = `${totalScore} ${t('pts')}`;
+  document.getElementById('sc-facts').innerHTML = [
+    t('scFact1'), t('scFact2'), t('scFact3'), t('scFact4')
+  ].join('<br>');
+  document.querySelector('.sc-btn').textContent = t('retry');
+
+  document.getElementById('score-panel').classList.add('on');
+  document.getElementById('hud').classList.remove('on');
+  gameState = 'score';
+}
+
+function updateScoreScreen() {
+  const breakTime = Math.round(P3.timer * 10) / 10;
+  const timeBonus = Math.max(0, Math.floor((120 - P3.timer) * 10));
+  const totalScore = score + timeBonus;
+  document.getElementById('sc-title').textContent = t('scTitle');
+  document.getElementById('sc-gathered').textContent = `${t('scGathered')}: ${crowd}${t('people')} → ${crowd * 100}${t('pts')}`;
+  document.getElementById('sc-march').textContent = `${t('scMarch')}: ${crowd * 30}${t('pts')}`;
+  document.getElementById('sc-break').textContent = `${t('scBreak')}: ${breakTime}${t('sec')} → +${timeBonus}${t('pts')}`;
+  document.getElementById('sc-total').textContent = `${totalScore} ${t('pts')}`;
+  document.getElementById('sc-facts').innerHTML = [
+    t('scFact1'), t('scFact2'), t('scFact3'), t('scFact4')
+  ].join('<br>');
+  document.querySelector('.sc-btn').textContent = t('retry');
+}
+
+/* ── Input ── */
+function getPos(e) {
+  if (e.touches) {
+    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+  return { x: e.clientX, y: e.clientY };
+}
+
+function onInput(e) {
+  e.preventDefault();
+  if (gameState !== 'playing') return;
+  const pos = getPos(e);
+  if (phase === 1) tapP1(pos.x, pos.y);
+  else if (phase === 2) tapP2();
+  else if (phase === 3) tapP3(pos.x, pos.y);
+}
+
+canvas.addEventListener('pointerdown', onInput);
+canvas.addEventListener('touchstart', onInput, { passive: false });
+
+/* ── Game loop ── */
+function gameLoop(time) {
+  frameId = requestAnimationFrame(gameLoop);
+  const dt = Math.min((time - lastTime) / 1000, 0.05);
+  lastTime = time;
+
+  if (gameState !== 'playing') return;
+
+  ctx.clearRect(0, 0, W, H);
+
+  if (phase === 1) {
+    updateP1(dt);
+    drawP1();
+  } else if (phase === 2) {
+    updateP2(dt);
+    drawP2();
+  } else if (phase === 3) {
+    updateP3(dt);
+    drawP3();
+  }
+}
+
+/* ── Start / restart ── */
+function startGame() {
+  document.getElementById('overlay').classList.add('hide');
+  document.getElementById('score-panel').classList.remove('on');
+  gameState = 'playing';
+  phase = 1;
+  crowd = 0;
+  score = 0;
+  celebFireworks = [];
+  lastTime = performance.now();
+  initP1();
+  showPhaseIntro(t('p1name'));
+  if (!frameId) frameId = requestAnimationFrame(gameLoop);
+}
+
+function restart() {
+  document.getElementById('score-panel').classList.remove('on');
+  startGame();
+}
+
+// Start render loop for title screen background
+frameId = requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
